@@ -153,6 +153,8 @@ if __name__ == "__main__":
             cursor.execute(
                 'insert into WalletLog (date, description, source, price) \
                 value (%s, %s, %s, %s)', (item[0], item[1], source, item[2]))
+            print("insert : {0}, {1}, {2}, {3}".format( \
+                item[0], item[1], source, item[2]))
         except mysql.connector.errors.IntegrityError:
             print('duplicate')
 
