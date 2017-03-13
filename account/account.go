@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"log"
+
 	"github.com/pkg/errors"
 )
 
@@ -18,12 +20,40 @@ type Transaction struct {
 	Temporary bool      `json:"temporary"`
 }
 
-var dbdsn string
+type dbParam struct {
+	User    string
+	Pass    string
+	Host    string
+	Port    int
+	DB      string
+	Options string
+}
+
+func (param *dbParam) dsn() string {
+	if param == nil {
+		log.Fatalln("DBParam is not initialized")
+	}
+
+	var u string
+	if param.Pass == "" {
+		u = param.User
+	} else {
+		u = param.User + ":" + param.Pass
+	}
+
+	return fmt.Sprintf("%s@tcp(%s:%d)/%s?%s", u, param.Host, param.Port, param.DB, param.Options)
+}
+
+var dbparam *dbParam
 
 const tblTrans = "transactions"
 
+func SetDBParam(u string, pa string, h string, po int, db string, o string) {
+	dbparam = &dbParam{u, pa, h, po, db, o}
+}
+
 func AddTrans(tr Transaction) error {
-	db, err := sql.Open("mysql", dbdsn)
+	db, err := sql.Open("mysql", dbparam.dsn())
 	if err != nil {
 		return errors.Wrap(err, "failed to connect to db")
 	}
@@ -41,7 +71,7 @@ func AddTrans(tr Transaction) error {
 
 func QueryTrans(q string) ([]Transaction, error) {
 	// FIXME: MySQLのコネクションは毎度貼り直すのか残すべきか
-	db, err := sql.Open("mysql", dbdsn)
+	db, err := sql.Open("mysql", dbparam.dsn())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to connect to db")
 	}
@@ -70,21 +100,19 @@ func QueryTrans(q string) ([]Transaction, error) {
 	return list, nil
 }
 
-func SetDataSoruceName(dsn string) {
-	dbdsn = dsn
-}
-
-func ClearDB() error {
-	// for unit test
-
-	db, err := sql.Open("mysql", dbdsn)
+func InitializeDB() error {
+	param := *dbparam
+	param.DB = ""
+	db, err := sql.Open("mysql", param.dsn())
 	if err != nil {
 		return errors.Wrap(err, "failed to connect to DB")
 	}
 	defer db.Close()
 
 	queries := []string{
-		"DROP TABLE IF EXISTS " + tblTrans,
+		"drop database if exists " + dbparam.DB,
+		"create database " + dbparam.DB,
+		"use " + dbparam.DB,
 		"CREATE TABLE " + tblTrans + "(" +
 			"id        INT AUTO_INCREMENT, INDEX(id)," +
 			"type      TEXT NOT NULL," +
@@ -101,6 +129,5 @@ func ClearDB() error {
 			return errors.Wrap(err, "failed to exec query: "+q)
 		}
 	}
-
 	return nil
 }

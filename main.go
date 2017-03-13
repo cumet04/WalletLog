@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"net/http"
 
@@ -53,6 +54,14 @@ func transactionsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	initdb := *flag.Bool("initialize", false, "performs profile")
+	flag.Parse()
+	if initdb {
+		if err := account.InitializeDB(); err != nil {
+			panic(err)
+		}
+	}
+
 	http.HandleFunc("/transactions/", transactionsHandler)
 	http.ListenAndServe(":50000", nil)
 }
