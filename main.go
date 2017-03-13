@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/medalhkr/WalletLog/account"
 )
 

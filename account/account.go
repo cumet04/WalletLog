@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql"
 	"github.com/pkg/errors"
 )
 
 type Transaction struct {
+	ID        string    `json:"id"`
 	Type      string    `json:"type"`
 	Time      time.Time `json:"time"`
 	Price     int       `json:"price"`
@@ -29,8 +29,9 @@ func AddTrans(tr Transaction) error {
 	}
 	defer db.Close()
 
-	q := fmt.Sprintf("INSERT INTO %s VALUES('%s', '%s', %d, '%s', '%s', %t)", tblTrans,
-		tr.Type, tr.Time.UTC().Format(time.RFC3339), tr.Price, tr.Content, tr.Raw, tr.Temporary)
+	q := fmt.Sprintf("INSERT INTO %s (type, time, price, content, raw, temporary) "+
+		"VALUES('%s', '%s', %d, '%s', '%s', %t)", tblTrans, tr.Type,
+		tr.Time.UTC().Format(time.RFC3339), tr.Price, tr.Content, tr.Raw, tr.Temporary)
 	if _, err = db.Exec(q); err != nil {
 		return errors.Wrap(err, "failed to insert query")
 	}
@@ -58,7 +59,8 @@ func QueryTrans(q string) ([]Transaction, error) {
 	var list []Transaction
 	for rows.Next() {
 		var tr Transaction
-		err := rows.Scan(&tr.Type, &tr.Time, &tr.Price, &tr.Content, &tr.Raw, &tr.Temporary)
+		err := rows.Scan(&tr.ID, &tr.Type, &tr.Time, &tr.Price,
+			&tr.Content, &tr.Raw, &tr.Temporary)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to scan transaction")
 		}
@@ -84,6 +86,7 @@ func ClearDB() error {
 	queries := []string{
 		"DROP TABLE IF EXISTS " + tblTrans,
 		"CREATE TABLE " + tblTrans + "(" +
+			"id        INT AUTO_INCREMENT, INDEX(id)," +
 			"type      TEXT NOT NULL," +
 			"time      DATETIME NOT NULL," +
 			"price     INT NOT NULL," +
