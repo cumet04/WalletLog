@@ -1,33 +1,19 @@
-#
-# THIS FILE DOESN'T WORK CURRENTLY
-#
-
-
-# -*- coding: utf-8 -*- 
 import sys
-import os
-import json
 import argparse
-import datetime
 import re
-import mysql.connector
-
 
 
 def parsePurchase_smbc(log_file):
-    printLog("parse smbc")
+    # MEMO: 元号が変わるとバグる
     purchase_list = []
     for line in log_file:
-        entry = line[:-1].split(',')
-        # check whether line is purchase entry; Is first item Date ?
-        if re.match('H\d\d.\d\d.\d\d$', entry[0]) == None :
-            continue
+        if not line.startswith('H'):
+            continue  # drop the line if it's beginning is not year
 
+        entry = line[:-1].split(',')
         year = int(entry[0][1:3]) + 1988
-        date = re.sub('^H\d\d', str(year), entry[0]) # 和暦を西暦に 
-        desc = entry[3]
-        desc = desc[1:-1] # eliminate double-quotes from head / tail
-        desc = re.sub(r'\u3000+', ' ', desc) # 全角スペースを半角に
+        date = re.sub(r'^H\d\d', str(year), entry[0])  # 和暦を西暦に
+        desc = entry[3][1:-1]  # eliminate double-quotes from head / tail
         # check income or outgo
         if entry[1] != '':
             price = entry[1]
@@ -36,36 +22,32 @@ def parsePurchase_smbc(log_file):
         purchase_list.append((date, desc, price))
     return purchase_list
 
+
 def parsePurchase_pitapa(log_file):
-    printLog("parse pitapa")
+    # TODO: プリペイド利用をうまく処理する
     purchase_list = []
     for line in log_file:
-        entry = line[:-1].split(',')
-        # check whether 'entry' is purchase entry; Is first item Date ?
-        if re.match('\d\d\d\d/\d\d/\d\d$', entry[0]) == None :
-            continue
+        if not line.startswith('20'):
+            continue  # drop the line if it's beginning is not year
 
+        entry = line[:-1].split(',')
         date = entry[0]
         desc = entry[3]
-        desc = re.sub(r'\u3000+', ' ', desc) # 全角スペースを半角に
         price = entry[4]
         purchase_list.append((date, desc, price))
     return purchase_list
 
 
 def parsePurchase_jpbank(log_file):
-    printLog("parse jpbank")
     purchase_list = []
     for line in log_file:
-        entry = line[:-1].split(',')
-        # check whether 'entry' is purchase entry; Is first item Date ?
-        if re.match('\d\d\d\d/\d\d/\d\d$', entry[0]) == None :
-            continue
+        if not line.startswith('20'):
+            continue  # drop the line if it's beginning is not year
 
+        entry = line[:-1].split(',')
         date = entry[0]
         desc = entry[1]
-        desc = re.sub(r'\u3000+', ' ', desc) # 全角スペースを半角に
-        if entry[6] != '' :
+        if entry[6] != '':
             desc += ' ' + entry[6]
         price = entry[2]
         purchase_list.append((date, desc, price))
@@ -73,59 +55,26 @@ def parsePurchase_jpbank(log_file):
 
 
 def parsePurchase_visa(log_file):
-    printLog("parse visa")
     purchase_list = []
     for line in log_file:
-        entry = line[:-1].split(',')
-        # check whether 'entry' is purchase entry; Is first item Date ?
-        if re.match('\d\d\d\d/\d\d/\d\d$', entry[0]) == None :
-            continue
+        if not line.startswith('20'):
+            continue  # drop the line if it's beginning is not year
 
+        entry = line[:-1].split(',')
         date = entry[0]
         desc = entry[1]
-        desc = re.sub(r'\u3000+', ' ', desc) # 全角スペースを半角に
-        if entry[6] != '' :
+        if entry[6] != '':
             desc += ' ' + entry[6]
         price = entry[2]
         purchase_list.append((date, desc, price))
     return purchase_list
 
 
-def printLog(message):
-    if conf.isLog: print("log: " + message)
-
-class Config(object):
-    def loadparam(self, conf_dict, param_name):
-        if param_name in conf_dict:
-            self.__dict__[param_name] = conf_dict[param_name]
-            return True
-        else:
-            return False
-
-script_path = os.path.abspath(os.path.dirname(__file__))
-conf_name = script_path + '/conf/WalletLog.conf'
-conf = Config()
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Parse a purchase log file.')
-    parser.add_argument('filename', metavar='file', type=str, 
-                               help='file name that is parsed')
+    parser.add_argument('filename', metavar='file', type=str,
+                        help='file name that is parsed')
     args = parser.parse_args()
-
-    # load and check config
-    with open(conf_name, 'r') as conf_file:
-        conf_dict = json.loads(conf_file.read())
-        if conf.loadparam(conf_dict, 'isLog') and \
-           conf.loadparam(conf_dict, 'db_host') and \
-           conf.loadparam(conf_dict, 'db_user') and \
-           conf.loadparam(conf_dict, 'db_pass') and \
-           conf.loadparam(conf_dict, 'db_name') and \
-           conf.loadparam(conf_dict, 'db_charset'): pass
-        else:
-            print("error: load config file failed; lack of parameter.")
-            quit(1)
-
 
     # check file type (jpbank/pitapa/visa/...)
     input_file = open(args.filename, 'r', encoding='cp932')
@@ -147,22 +96,5 @@ if __name__ == "__main__":
     else:
         sys.exit('unknown file type. abort.')
 
-    # connect to database
-    connect = mysql.connector.connect(
-            user=conf.db_user, password=conf.db_pass,
-            host=conf.db_host, database=conf.db_name,
-            charset=conf.db_charset, buffered=True)
-    cursor = connect.cursor()
     for item in purchase_items:
-        try:
-            cursor.execute(
-                'insert into WalletLog (date, description, source, price) \
-                value (%s, %s, %s, %s)', (item[0], item[1], source, item[2]))
-            print("insert : {0}, {1}, {2}, {3}".format( \
-                item[0], item[1], source, item[2]))
-        except mysql.connector.errors.IntegrityError:
-            print('duplicate')
-
-    connect.commit()
-    cursor.close()
-    connect.close()
+        print((item[0], re.sub(r'\u3000+', ' ', item[1]), item[2]))
