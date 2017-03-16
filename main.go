@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"log"
+
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/medalhkr/WalletLog/account"
 )
@@ -16,12 +18,14 @@ func apiAddTrans(w http.ResponseWriter, r *http.Request) {
 	err := dec.Decode(&input)
 	if err != nil {
 		w.WriteHeader(400)
-		fmt.Fprint(w, "failed to unmarshal input")
+		fmt.Fprintf(w, "failed to unmarshal input: %v", err)
+		return
 	}
 	if err := account.AddTrans(input); err != nil {
 		w.WriteHeader(500)
 		fmt.Print(err)
 		fmt.Fprint(w, "failed to add transaction")
+		return
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	fmt.Fprint(w, input)
@@ -54,9 +58,12 @@ func transactionsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	initdb := *flag.Bool("initialize", false, "performs profile")
+	var initdb bool
+	flag.BoolVar(&initdb, "initialize", false, "initialize DB")
 	flag.Parse()
+	account.SetDBParam("root", "", "127.0.0.1", 3306, "walletlog", "parseTime=true")
 	if initdb {
+		log.Println("initialize DB...")
 		if err := account.InitializeDB(); err != nil {
 			panic(err)
 		}
