@@ -21,7 +21,7 @@ def parsePurchase_smbc(log_file):
             price = entry[1]
         else:
             price = '-' + entry[2]
-        purchase_list.append((date, desc, price, line))
+        purchase_list.append((date, desc, int(price), line.replace('\n', '')))
     return purchase_list
 
 
@@ -36,7 +36,7 @@ def parsePurchase_pitapa(log_file):
         date = datetime.strptime(entry[0], '%Y/%m/%d')
         desc = entry[3]
         price = entry[4]
-        purchase_list.append((date, desc, price, line))
+        purchase_list.append((date, desc, int(price), line.replace('\n', '')))
     return purchase_list
 
 
@@ -52,7 +52,7 @@ def parsePurchase_jpbank(log_file):
         if entry[6] != '':
             desc += ' ' + entry[6]
         price = entry[2]
-        purchase_list.append((date, desc, price, line))
+        purchase_list.append((date, desc, int(price), line.replace('\n', '')))
     return purchase_list
 
 
@@ -68,7 +68,7 @@ def parsePurchase_visa(log_file):
         if entry[6] != '':
             desc += ' ' + entry[6]
         price = entry[2]
-        purchase_list.append((date, desc, price, line))
+        purchase_list.append((date, desc, int(price), line.replace('\n', '')))
     return purchase_list
 
 
