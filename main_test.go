@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"io/ioutil"
+
 	"github.com/medalhkr/WalletLog/account"
 )
 
@@ -25,6 +27,9 @@ func teardown() {
 }
 
 func TestSingleAddAndList(t *testing.T) {
+	if err := account.InitializeDB(); err != nil {
+		log.Fatalf("ERROR in setup: %v", err)
+	}
 	ts := httptest.NewServer(http.HandlerFunc(transactionsHandler))
 	defer ts.Close()
 
@@ -44,7 +49,8 @@ func TestSingleAddAndList(t *testing.T) {
 		t.Fatalf("Error by http.Post(). %v", err)
 	}
 	if r.StatusCode != 200 {
-		t.Fatalf("The status code is %d", r.StatusCode)
+		msg, _ := ioutil.ReadAll(r.Body)
+		t.Fatalf("The status code is %d\nmsg: %s", r.StatusCode, string(msg))
 	}
 
 	// test get transactions
@@ -53,7 +59,8 @@ func TestSingleAddAndList(t *testing.T) {
 		t.Fatalf("Error by http.Get(). %v", err)
 	}
 	if r.StatusCode != 200 {
-		t.Fatalf("The status code is %d", r.StatusCode)
+		msg, _ := ioutil.ReadAll(r.Body)
+		t.Fatalf("The status code is %d\nmsg: %s", r.StatusCode, string(msg))
 	}
 	var list []account.Transaction
 	if err := json.NewDecoder(r.Body).Decode(&list); err != nil {
@@ -70,6 +77,64 @@ func TestSingleAddAndList(t *testing.T) {
 		Price:     2000,
 		Content:   "kabe",
 		Raw:       "20170310, 1000, kabe",
+		Temporary: true,
+	}
+	if equalTrans(list[0], expected) == false {
+		t.Fatalf("unexpected result: %v, expected: %v", list[0], expected)
+	}
+}
+
+func TestSingleAddAndListJP(t *testing.T) {
+	if err := account.InitializeDB(); err != nil {
+		log.Fatalf("ERROR in setup: %v", err)
+	}
+	ts := httptest.NewServer(http.HandlerFunc(transactionsHandler))
+	defer ts.Close()
+
+	// test add transaction
+	input := strings.NewReader(`
+		{
+		"type": "jpbank",
+		"time": "2015-12-22T00:00:00+09:00",
+		"price": 2915,
+		"content": "神戸市水道局 コウベシスイドウキヨク　Ｅ５",
+		"raw": "2015/12/22,神戸市水道局,2915,１,１,2915,コウベシスイドウキヨク　Ｅ５",
+		"temporary": true
+		}
+	`)
+	r, err := http.Post(ts.URL, "application/json", input)
+	if err != nil {
+		t.Fatalf("Error by http.Post(). %v", err)
+	}
+	if r.StatusCode != 200 {
+		msg, _ := ioutil.ReadAll(r.Body)
+		t.Fatalf("The status code is %d\nmsg: %s", r.StatusCode, string(msg))
+	}
+
+	// test get transactions
+	r, err = http.Get(ts.URL)
+	if err != nil {
+		t.Fatalf("Error by http.Get(). %v", err)
+	}
+	if r.StatusCode != 200 {
+		msg, _ := ioutil.ReadAll(r.Body)
+		t.Fatalf("The status code is %d\nmsg: %s", r.StatusCode, string(msg))
+	}
+	var list []account.Transaction
+	if err := json.NewDecoder(r.Body).Decode(&list); err != nil {
+		t.Fatalf("Error by json decode. %v", err)
+	}
+
+	if len(list) != 1 {
+		t.Fatalf("result's size is wrong: %d", len(list))
+	}
+	loc, _ := time.LoadLocation("Asia/Tokyo")
+	expected := account.Transaction{
+		Type:      "jpbank",
+		Time:      time.Date(2015, 12, 22, 0, 0, 0, 0, loc),
+		Price:     2915,
+		Content:   "神戸市水道局 コウベシスイドウキヨク　Ｅ５",
+		Raw:       "2015/12/22,神戸市水道局,2915,１,１,2915,コウベシスイドウキヨク　Ｅ５",
 		Temporary: true,
 	}
 	if equalTrans(list[0], expected) == false {
