@@ -1,6 +1,7 @@
 import sys
 import argparse
 import re
+from datetime import datetime
 
 
 def parsePurchase_smbc(log_file):
@@ -13,6 +14,7 @@ def parsePurchase_smbc(log_file):
         entry = line[:-1].split(',')
         year = int(entry[0][1:3]) + 1988
         date = re.sub(r'^H\d\d', str(year), entry[0])  # 和暦を西暦に
+        date = datetime.strptime(date, '%Y.%m.%d')
         desc = entry[3][1:-1]  # eliminate double-quotes from head / tail
         # check income or outgo
         if entry[1] != '':
@@ -31,7 +33,7 @@ def parsePurchase_pitapa(log_file):
             continue  # drop the line if it's beginning is not year
 
         entry = line[:-1].split(',')
-        date = entry[0]
+        date = datetime.strptime(entry[0], '%Y/%m/%d')
         desc = entry[3]
         price = entry[4]
         purchase_list.append((date, desc, price))
@@ -45,7 +47,7 @@ def parsePurchase_jpbank(log_file):
             continue  # drop the line if it's beginning is not year
 
         entry = line[:-1].split(',')
-        date = entry[0]
+        date = datetime.strptime(entry[0], '%Y/%m/%d')
         desc = entry[1]
         if entry[6] != '':
             desc += ' ' + entry[6]
@@ -61,7 +63,7 @@ def parsePurchase_visa(log_file):
             continue  # drop the line if it's beginning is not year
 
         entry = line[:-1].split(',')
-        date = entry[0]
+        date = datetime.strptime(entry[0], '%Y/%m/%d')
         desc = entry[1]
         if entry[6] != '':
             desc += ' ' + entry[6]
