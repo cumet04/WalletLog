@@ -70,6 +70,10 @@ def parsePurchase_visa(log_file):
         if entry[6] != '':
             desc += ' ' + entry[6]
         price = entry[2]
+        if price == '':
+            # TODO: たまにあるけどどうしよう？
+            print('empty price is found: ' + line.replace('\n', ''))
+            continue
         purchase_list.append((date, desc, int(price), line.replace('\n', '')))
     return purchase_list
 
