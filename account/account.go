@@ -82,7 +82,7 @@ func QueryTrans(q string) ([]Transaction, error) {
 	}
 	rows, err := db.Query(q)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to query")
+		return nil, errors.Wrap(err, "failed to query: "+q)
 	}
 	defer rows.Close()
 
