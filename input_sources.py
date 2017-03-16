@@ -1,7 +1,9 @@
 import sys
 import argparse
 import re
+import json
 from datetime import datetime
+import requests
 
 
 def parsePurchase_smbc(log_file):
@@ -99,4 +101,17 @@ if __name__ == "__main__":
         sys.exit('unknown file type. abort.')
 
     for item in purchase_items:
-        print((item[0], re.sub(r'\u3000+', ' ', item[1]), item[2]))
+        trans = {
+            "type": source,
+            "time": item[0].isoformat() + "+09:00",  # timezone ?
+            "price": item[2],
+            "content": item[1],
+            "raw": item[3],
+            "temporary": True
+        }
+        data = json.dumps(trans, ensure_ascii=False)
+        print(data)
+        response = requests.post(
+            'http://localhost:50000/transactions/',
+            data.encode(),
+            headers={'Content-Type': 'application/json; charset=utf-8'})
