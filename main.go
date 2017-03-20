@@ -69,6 +69,7 @@ func main() {
 		}
 	}
 
-	http.HandleFunc("/transactions/", transactionsHandler)
+	http.Handle("/", http.FileServer(http.Dir("static")))
+	http.HandleFunc("/api/transactions/", transactionsHandler)
 	http.ListenAndServe(":50000", nil)
 }

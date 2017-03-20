@@ -116,6 +116,6 @@ if __name__ == "__main__":
         data = json.dumps(trans, ensure_ascii=False)
         print(data)
         response = requests.post(
-            'http://localhost:50000/transactions/',
+            'http://localhost:50000/api/transactions/',
             data.encode(),
             headers={'Content-Type': 'application/json; charset=utf-8'})
