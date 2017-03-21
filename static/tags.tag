@@ -1,36 +1,28 @@
 <transactions>
-    <table>
+    <table border=1>
         <tr>
-            <th>ID</th>
-            <th>type</th>
             <th>time</th>
             <th>price</th>
             <th>content</th>
+            <th>type</th>
         </tr>
         <tr each={ items }>
-            <td>{ id }</td>
-            <td>{ type }</td>
             <td>{ time }</td>
-            <td>{ price }</td>
+            <td align='right'>{ price }</td>
             <td>{ content }</td>
+            <td>{ type }</td>
         </tr>
     </table>
 
+    <style>
+        :scope { border-collapse: collapse }
+    </style>
+
     <script>
-    var self = this;
-    fetch('/api/transactions/')
-        .then((response) => {
-            if (!response.ok) {
-                console.log(`transactions [GET] API returns error: code=${response.status}, msg=${response.statusText}`)
-                return;
-            }
-            response.json().then((list) => {
-                self.items = list;
-                self.update();
-            });
-        })
-        .catch((error) => {
-            console.log('There has been a problem with your fetch operation: ' + error.message);
-        });
+    this.items = opts.items.map((x) => {
+        x.time = x.time.replace(/T00:00:00\+09:00/, '');
+        x.price = String(x.price).replace(/(\d)(?=(\d\d\d)+(?!\d))/g, '$1,');
+        return x;
+    });
     </script>
 </transactions>
