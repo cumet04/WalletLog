@@ -93,7 +93,8 @@ func transactionsHandler(w http.ResponseWriter, r *http.Request) {
 		apiQueryTrans(w, r)
 	case "POST":
 		apiAddTrans(w, r)
-		// default 406
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
 }
 
@@ -103,6 +104,8 @@ func sourceHandler(w http.ResponseWriter, r *http.Request) {
 		apiGetSource(w, r)
 	case "PUT":
 		apiPutSource(w, r)
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
 }
 
