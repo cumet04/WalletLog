@@ -50,12 +50,59 @@ func apiQueryTrans(w http.ResponseWriter, r *http.Request) {
 	w.Write(data)
 }
 
+func apiGetSource(w http.ResponseWriter, r *http.Request) {
+	res, err := account.GetSource(r.URL.Query().Get("name"))
+	if err != nil {
+		w.WriteHeader(500)
+		fmt.Print(err)
+		fmt.Fprint(w, "failed to put source")
+		return
+	}
+	data, err := json.Marshal(res)
+	if err != nil {
+		w.WriteHeader(500)
+		fmt.Print(err)
+		fmt.Fprint(w, "failed")
+	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Write(data)
+}
+
+func apiPutSource(w http.ResponseWriter, r *http.Request) {
+	var input account.Source
+	dec := json.NewDecoder(r.Body)
+	err := dec.Decode(&input)
+	if err != nil {
+		w.WriteHeader(400)
+		fmt.Fprintf(w, "failed to unmarshal input: %v", err)
+		return
+	}
+	if err := account.PutSource(input); err != nil {
+		w.WriteHeader(500)
+		fmt.Print(err)
+		fmt.Fprint(w, "failed to put source")
+		return
+	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	fmt.Fprint(w, input)
+}
+
 func transactionsHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
 		apiQueryTrans(w, r)
 	case "POST":
 		apiAddTrans(w, r)
+		// default 406
+	}
+}
+
+func sourceHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case "GET":
+		apiGetSource(w, r)
+	case "PUT":
+		apiPutSource(w, r)
 	}
 }
 
@@ -75,5 +122,6 @@ func main() {
 	log.Println("start serving")
 	http.Handle("/", http.FileServer(http.Dir("static")))
 	http.HandleFunc("/api/transactions/", transactionsHandler)
+	http.HandleFunc("/api/source/", sourceHandler)
 	http.ListenAndServe(":50000", nil)
 }

@@ -26,6 +26,102 @@ func teardown() {
 	// Nothing to do
 }
 
+func TestSinglePutSource(t *testing.T) {
+	if err := account.InitializeDB(); err != nil {
+		log.Fatalf("ERROR in setup: %v", err)
+	}
+	ts := httptest.NewServer(http.HandlerFunc(sourceHandler))
+	defer ts.Close()
+
+	// insert
+	input := strings.NewReader(`{
+		"name": "test-card",
+		"type": 0,
+		"available": true
+	}`)
+	req, _ := http.NewRequest(http.MethodPut, ts.URL, input)
+	req.Header.Add("Content-Type", "application/json")
+	r, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("Error by http.Put(). %v", err)
+	}
+	if r.StatusCode != 200 {
+		msg, _ := ioutil.ReadAll(r.Body)
+		t.Fatalf("The status code is %d\nmsg: %s", r.StatusCode, string(msg))
+	}
+
+	// get
+	r, err = http.Get(ts.URL + "/?name=test-card")
+	if err != nil {
+		t.Fatalf("Error by http.Get(). %v", err)
+	}
+	if r.StatusCode != 200 {
+		msg, _ := ioutil.ReadAll(r.Body)
+		t.Fatalf("The status code is %d\nmsg: %s", r.StatusCode, string(msg))
+	}
+	var res account.Source
+	if err := json.NewDecoder(r.Body).Decode(&res); err != nil {
+		t.Fatalf("Error by json decode. %v", err)
+	}
+	expected := account.Source{
+		Name:      "test-card",
+		Type:      0,
+		Available: true,
+	}
+	if equalSource(res, expected) == false {
+		t.Fatalf("unexpected result: %v, expected: %v", res, expected)
+	}
+}
+
+func TestDuplicatePutSource(t *testing.T) {
+	if err := account.InitializeDB(); err != nil {
+		log.Fatalf("ERROR in setup: %v", err)
+	}
+	ts := httptest.NewServer(http.HandlerFunc(sourceHandler))
+	defer ts.Close()
+
+	for i := range []int{1, 2} {
+		// insert
+		input := strings.NewReader(`{
+			"name": "test-card",
+			"type": 0,
+			"available": true
+		}`)
+		req, _ := http.NewRequest(http.MethodPut, ts.URL, input)
+		req.Header.Add("Content-Type", "application/json")
+		r, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatalf("Error by http.Put() at try %d. %v", i, err)
+		}
+		if r.StatusCode != 200 {
+			msg, _ := ioutil.ReadAll(r.Body)
+			t.Fatalf("The status code is %d at try %d\nmsg: %s", i, r.StatusCode, string(msg))
+		}
+
+		// get
+		r, err = http.Get(ts.URL + "/?name=test-card")
+		if err != nil {
+			t.Fatalf("Error by http.Get(). %v", err)
+		}
+		if r.StatusCode != 200 {
+			msg, _ := ioutil.ReadAll(r.Body)
+			t.Fatalf("The status code is %d\nmsg: %s", r.StatusCode, string(msg))
+		}
+		var res account.Source
+		if err := json.NewDecoder(r.Body).Decode(&res); err != nil {
+			t.Fatalf("Error by json decode. %v", err)
+		}
+		expected := account.Source{
+			Name:      "test-card",
+			Type:      0,
+			Available: true,
+		}
+		if equalSource(res, expected) == false {
+			t.Fatalf("unexpected result: %v, expected: %v", res, expected)
+		}
+	}
+}
+
 func TestSingleAddAndList(t *testing.T) {
 	if err := account.InitializeDB(); err != nil {
 		log.Fatalf("ERROR in setup: %v", err)
@@ -34,16 +130,14 @@ func TestSingleAddAndList(t *testing.T) {
 	defer ts.Close()
 
 	// test add transaction
-	input := strings.NewReader(`
-		{
-			"type": "smbc-visa",
-			"time": "2017-03-12T00:00:00+09:00",
-			"price": 2000,
-			"content": "kabe",
-			"raw": "20170310, 1000, kabe",
-			"temporary": true
-		}
-	`)
+	input := strings.NewReader(`{
+		"type": "smbc-visa",
+		"time": "2017-03-12T00:00:00+09:00",
+		"price": 2000,
+		"content": "kabe",
+		"raw": "20170310, 1000, kabe",
+		"temporary": true
+	}`)
 	r, err := http.Post(ts.URL, "application/json", input)
 	if err != nil {
 		t.Fatalf("Error by http.Post(). %v", err)
@@ -72,7 +166,7 @@ func TestSingleAddAndList(t *testing.T) {
 	}
 	loc, _ := time.LoadLocation("Asia/Tokyo")
 	expected := account.Transaction{
-		Type:      "smbc-visa",
+		Source:    "smbc-visa",
 		Time:      time.Date(2017, 3, 12, 0, 0, 0, 0, loc),
 		Price:     2000,
 		Content:   "kabe",
@@ -92,16 +186,14 @@ func TestSingleAddAndListJP(t *testing.T) {
 	defer ts.Close()
 
 	// test add transaction
-	input := strings.NewReader(`
-		{
+	input := strings.NewReader(`{
 		"type": "jpbank-card",
 		"time": "2015-12-22T00:00:00+09:00",
 		"price": 2915,
 		"content": "神戸市水道局 コウベシスイドウキヨク　Ｅ５",
 		"raw": "2015/12/22,神戸市水道局,2915,１,１,2915,コウベシスイドウキヨク　Ｅ５",
 		"temporary": true
-		}
-	`)
+	}`)
 	r, err := http.Post(ts.URL, "application/json", input)
 	if err != nil {
 		t.Fatalf("Error by http.Post(). %v", err)
@@ -130,7 +222,7 @@ func TestSingleAddAndListJP(t *testing.T) {
 	}
 	loc, _ := time.LoadLocation("Asia/Tokyo")
 	expected := account.Transaction{
-		Type:      "jpbank-card",
+		Source:    "jpbank-card",
 		Time:      time.Date(2015, 12, 22, 0, 0, 0, 0, loc),
 		Price:     2915,
 		Content:   "神戸市水道局 コウベシスイドウキヨク　Ｅ５",
@@ -141,9 +233,21 @@ func TestSingleAddAndListJP(t *testing.T) {
 		t.Fatalf("unexpected result: %v, expected: %v", list[0], expected)
 	}
 }
+func equalSource(e1 account.Source, e2 account.Source) bool {
+	if e1.Name != e2.Name {
+		return false
+	}
+	if e1.Type != e2.Type {
+		return false
+	}
+	if e1.Available != e2.Available {
+		return false
+	}
+	return true
+}
 
 func equalTrans(e1 account.Transaction, e2 account.Transaction) bool {
-	if e1.Type != e2.Type {
+	if e1.Source != e2.Source {
 		return false
 	}
 	if e1.Time.Equal(e2.Time) == false {

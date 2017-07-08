@@ -12,12 +12,18 @@ import (
 
 type Transaction struct {
 	ID        string    `json:"id"`
-	Type      string    `json:"type"`
+	Source    string    `json:"type"`
 	Time      time.Time `json:"time"`
 	Price     int       `json:"price"`
 	Content   string    `json:"content"`
 	Raw       string    `json:"raw"`
 	Temporary bool      `json:"temporary"`
+}
+
+type Source struct {
+	Name      string `json:"name"`
+	Type      int    `json:"type"`
+	Available bool   `json:"available"`
 }
 
 type dbParam struct {
@@ -105,6 +111,39 @@ func SetDBParam(u string, pa string, h string, po int, db string, o string) {
 	dbparam = &dbParam{u, pa, h, po, db, o}
 }
 
+func GetSource(name string) (*Source, error) {
+	db, err := sql.Open("mysql", dbparam.dsn())
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to connect to db")
+	}
+	defer db.Close()
+
+	q := fmt.Sprintf("SELECT name, type, available from sources WHERE name = '%s'", name)
+	var res Source
+	if err = db.QueryRow(q).Scan(&res.Name, &res.Type, &res.Available); err != nil {
+		return nil, errors.Wrap(err, "failed to select query")
+	}
+
+	return &res, nil
+}
+
+func PutSource(so Source) error {
+	db, err := sql.Open("mysql", dbparam.dsn())
+	if err != nil {
+		return errors.Wrap(err, "failed to connect to db")
+	}
+	defer db.Close()
+
+	q := fmt.Sprintf("INSERT INTO sources (name, type, available) VALUES('%s', %d, %t) "+
+		"ON DUPLICATE KEY UPDATE type=values(type), available=values(available)",
+		so.Name, so.Type, so.Available)
+	if _, err = db.Exec(q); err != nil {
+		return errors.Wrap(err, "failed to insert query")
+	}
+
+	return nil
+}
+
 func AddTrans(tr Transaction) error {
 	db, err := sql.Open("mysql", dbparam.dsn())
 	if err != nil {
@@ -113,7 +152,7 @@ func AddTrans(tr Transaction) error {
 	defer db.Close()
 
 	q := fmt.Sprintf("INSERT INTO transactions (source, time, price, content, raw, temporary) "+
-		"VALUES('%s', '%s', %d, '%s', '%s', %t)", tr.Type,
+		"VALUES('%s', '%s', %d, '%s', '%s', %t)", tr.Source,
 		tr.Time.UTC().Format("2006-01-02 15:04:05"), tr.Price, tr.Content, tr.Raw, tr.Temporary)
 	if _, err = db.Exec(q); err != nil {
 		return errors.Wrap(err, "failed to insert query")
@@ -142,7 +181,7 @@ func QueryTrans(q string) ([]Transaction, error) {
 	var list []Transaction
 	for rows.Next() {
 		var tr Transaction
-		err := rows.Scan(&tr.ID, &tr.Type, &tr.Time, &tr.Price,
+		err := rows.Scan(&tr.ID, &tr.Source, &tr.Time, &tr.Price,
 			&tr.Content, &tr.Raw, &tr.Temporary)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to scan transaction")
