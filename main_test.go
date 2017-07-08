@@ -36,7 +36,7 @@ func TestSingleAddAndList(t *testing.T) {
 	// test add transaction
 	input := strings.NewReader(`
 		{
-			"type": "visa",
+			"type": "smbc-visa",
 			"time": "2017-03-12T00:00:00+09:00",
 			"price": 2000,
 			"content": "kabe",
@@ -72,7 +72,7 @@ func TestSingleAddAndList(t *testing.T) {
 	}
 	loc, _ := time.LoadLocation("Asia/Tokyo")
 	expected := account.Transaction{
-		Type:      "visa",
+		Type:      "smbc-visa",
 		Time:      time.Date(2017, 3, 12, 0, 0, 0, 0, loc),
 		Price:     2000,
 		Content:   "kabe",
@@ -94,7 +94,7 @@ func TestSingleAddAndListJP(t *testing.T) {
 	// test add transaction
 	input := strings.NewReader(`
 		{
-		"type": "jpbank",
+		"type": "jpbank-card",
 		"time": "2015-12-22T00:00:00+09:00",
 		"price": 2915,
 		"content": "神戸市水道局 コウベシスイドウキヨク　Ｅ５",
@@ -130,7 +130,7 @@ func TestSingleAddAndListJP(t *testing.T) {
 	}
 	loc, _ := time.LoadLocation("Asia/Tokyo")
 	expected := account.Transaction{
-		Type:      "jpbank",
+		Type:      "jpbank-card",
 		Time:      time.Date(2015, 12, 22, 0, 0, 0, 0, loc),
 		Price:     2915,
 		Content:   "神戸市水道局 コウベシスイドウキヨク　Ｅ５",

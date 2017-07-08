@@ -29,6 +29,61 @@ type dbParam struct {
 	Options string
 }
 
+type SourceType int
+
+const (
+	SourceBank SourceType = iota
+	SourcePayment
+)
+
+func InitializeDB() error {
+	param := *dbparam
+	param.DB = ""
+	db, err := sql.Open("mysql", param.dsn())
+	if err != nil {
+		return errors.Wrap(err, "failed to connect to DB")
+	}
+	defer db.Close()
+
+	queries := []string{
+		"drop database if exists " + dbparam.DB,
+		"create database " + dbparam.DB,
+		"use " + dbparam.DB,
+		"CREATE TABLE sources (" +
+			"name      VARCHAR(32) PRIMARY KEY," +
+			"type      INT NOT NULL," +
+			"available BOOL NOT NULL" +
+			")",
+		"INSERT INTO sources values" +
+			"('smbc-bank', '" + fmt.Sprint(SourceBank) + "', true)," +
+			"('mizuho-bank', '" + fmt.Sprint(SourceBank) + "', true)," +
+			"('smbc-visa', '" + fmt.Sprint(SourcePayment) + "', true)," +
+			"('amazon-card', '" + fmt.Sprint(SourcePayment) + "', true)," +
+			"('view-card', '" + fmt.Sprint(SourcePayment) + "', true)," +
+			"('tokyu-card', '" + fmt.Sprint(SourcePayment) + "', true)," +
+			"('jpbank-card', '" + fmt.Sprint(SourcePayment) + "', false)," +
+			"('pitapa', '" + fmt.Sprint(SourcePayment) + "', true)",
+		// TODO: hash
+		"CREATE TABLE transactions (" +
+			"id        INT AUTO_INCREMENT PRIMARY KEY," +
+			"source    VARCHAR(32) NOT NULL," +
+			"FOREIGN KEY (source) REFERENCES sources (name)," +
+			"time      DATETIME NOT NULL," +
+			"price     INT NOT NULL," +
+			"content   VARCHAR(256) NOT NULL," +
+			"raw       VARCHAR(512) NOT NULL," +
+			"temporary BOOL NOT NULL" +
+			")",
+	}
+	for _, q := range queries {
+		_, err = db.Exec(q)
+		if err != nil {
+			return errors.Wrap(err, "failed to exec query: "+q)
+		}
+	}
+	return nil
+}
+
 func (param *dbParam) dsn() string {
 	if param == nil {
 		log.Fatalln("DBParam is not initialized")
@@ -46,8 +101,6 @@ func (param *dbParam) dsn() string {
 
 var dbparam *dbParam
 
-const tblTrans = "transactions"
-
 func SetDBParam(u string, pa string, h string, po int, db string, o string) {
 	dbparam = &dbParam{u, pa, h, po, db, o}
 }
@@ -59,9 +112,9 @@ func AddTrans(tr Transaction) error {
 	}
 	defer db.Close()
 
-	q := fmt.Sprintf("INSERT INTO %s (type, time, price, content, raw, temporary) "+
-		"VALUES('%s', '%s', %d, '%s', '%s', %t)", tblTrans, tr.Type,
-		tr.Time.UTC().Format(time.RFC3339), tr.Price, tr.Content, tr.Raw, tr.Temporary)
+	q := fmt.Sprintf("INSERT INTO transactions (source, time, price, content, raw, temporary) "+
+		"VALUES('%s', '%s', %d, '%s', '%s', %t)", tr.Type,
+		tr.Time.UTC().Format("2006-01-02 15:04:05"), tr.Price, tr.Content, tr.Raw, tr.Temporary)
 	if _, err = db.Exec(q); err != nil {
 		return errors.Wrap(err, "failed to insert query")
 	}
@@ -78,7 +131,7 @@ func QueryTrans(q string) ([]Transaction, error) {
 	defer db.Close()
 
 	if q == "" {
-		q = "SELECT * FROM " + tblTrans
+		q = "SELECT * FROM transactions"
 	}
 	rows, err := db.Query(q)
 	if err != nil {
@@ -98,36 +151,4 @@ func QueryTrans(q string) ([]Transaction, error) {
 		list = append(list, tr)
 	}
 	return list, nil
-}
-
-func InitializeDB() error {
-	param := *dbparam
-	param.DB = ""
-	db, err := sql.Open("mysql", param.dsn())
-	if err != nil {
-		return errors.Wrap(err, "failed to connect to DB")
-	}
-	defer db.Close()
-
-	queries := []string{
-		"drop database if exists " + dbparam.DB,
-		"create database " + dbparam.DB,
-		"use " + dbparam.DB,
-		"CREATE TABLE " + tblTrans + "(" +
-			"id        INT AUTO_INCREMENT, INDEX(id)," +
-			"type      TEXT NOT NULL," +
-			"time      DATETIME NOT NULL," +
-			"price     INT NOT NULL," +
-			"content   TEXT NOT NULL," +
-			"raw       TEXT NOT NULL," +
-			"temporary BOOL NOT NULL" +
-			")",
-	}
-	for _, q := range queries {
-		_, err = db.Exec(q)
-		if err != nil {
-			return errors.Wrap(err, "failed to exec query: "+q)
-		}
-	}
-	return nil
 }
