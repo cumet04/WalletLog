@@ -35,7 +35,8 @@ func apiAddTrade(w http.ResponseWriter, r *http.Request) {
 }
 
 func apiQueryTrade(w http.ResponseWriter, r *http.Request) {
-	res, err := account.QueryTrade("")
+	query := r.Form.Get("query")
+	res, err := account.QueryTrade(query)
 	if err != nil {
 		w.WriteHeader(500)
 		fmt.Print(err)
@@ -60,10 +61,6 @@ func apiAddPurchase(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "failed to unmarshal input: %v", err)
 		return
 	}
-	// refs := make([]*account.Purchase, len(input))
-	// for i, item := range input {
-	// 	refs[i] = &item
-	// }
 	if err := account.AddPurchase(input); err != nil {
 		w.WriteHeader(500)
 		fmt.Print(err)
@@ -75,7 +72,8 @@ func apiAddPurchase(w http.ResponseWriter, r *http.Request) {
 }
 
 func apiQueryPurchase(w http.ResponseWriter, r *http.Request) {
-	res, err := account.QueryPurchase("")
+	query := r.Form.Get("query")
+	res, err := account.QueryPurchase(query)
 	if err != nil {
 		w.WriteHeader(500)
 		fmt.Print(err)
