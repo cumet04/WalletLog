@@ -115,8 +115,13 @@ func main() {
 	var migrate bool
 	flag.BoolVar(&migrate, "migrate", false, "initialize DB")
 	flag.Parse()
-	// account.SetDBParam("mysql", "root@tcp(127.0.0.1:3306)/walletlog_test?parseTime=true")
-	// account.SetDBParam("sqlite3", "main.db")
+	// if err := account.PrepareDB("mysql", "root@tcp(127.0.0.1:3306)/walletlog?parseTime=true"); err != nil {
+	// if err := account.PrepareDB("sqlite3", "file:main?mode=memory"); err != nil {
+	if err := account.PrepareDB("sqlite3", "realdata.db"); err != nil {
+		panic(err)
+	}
+	defer account.CloseDB()
+
 	if migrate {
 		log.Println("initialize DB...")
 		if err := account.InitializeDB(); err != nil {
