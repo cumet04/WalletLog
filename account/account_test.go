@@ -57,6 +57,40 @@ func TestAddPurchaseSingle(t *testing.T) {
 	}
 }
 
+func TestAddPurchaseTimezone(t *testing.T) {
+	if err := InitializeDB(); err != nil {
+		t.Fatalf("failed to initialize DB: %v", err)
+	}
+	loc, _ := time.LoadLocation("Asia/Tokyo")
+	local := time.Date(2015, 12, 22, 0, 0, 0, 0, loc)
+	input := []Purchase{
+		Purchase{
+			Source:    "jpbank-card",
+			Time:      local.UTC(),
+			Price:     2915,
+			Content:   "神戸市水道局 コウベシスイドウキヨク　Ｅ５",
+			Raw:       "2015/12/22,神戸市水道局,2915,１,１,2915,コウベシスイドウキヨク　Ｅ５",
+			Temporary: true,
+		},
+	}
+
+	if err := AddPurchase(input); err != nil {
+		t.Fatalf("Error by AddPurchase. %v", err)
+	}
+
+	results, err := QueryPurchase("")
+	if err != nil {
+		t.Fatalf("Error by QueryPurchase. %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("result's size is %d instead of 1", len(results))
+	}
+	input[0].Time = local
+	if equalPurchase(results[0], input[0]) == false {
+		t.Fatalf("unexpected result: %v, expected: %v", results[0], input[0])
+	}
+}
+
 func TestAddPurchaseMulti(t *testing.T) {
 	if err := InitializeDB(); err != nil {
 		t.Fatalf("failed to initialize DB: %v", err)
