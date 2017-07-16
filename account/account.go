@@ -10,7 +10,7 @@ import (
 
 type BankTrade struct {
 	ID        int       `json:"id"`
-	Source    string    `json:"type"`
+	Source    string    `json:"source"`
 	Time      time.Time `json:"time"`
 	Price     int       `json:"price"`
 	Content   string    `json:"content"`
@@ -20,7 +20,7 @@ type BankTrade struct {
 
 type Purchase struct {
 	ID        int       `json:"id"`
-	Source    string    `json:"type"`
+	Source    string    `json:"source"`
 	Time      time.Time `json:"time"`
 	Price     int       `json:"price"`
 	Content   string    `json:"content"`
@@ -81,8 +81,8 @@ func AddPurchase(inputs []Purchase) error {
 	// inputs... -> non pointer
 	// []*Purhace... -> 謎エラー
 	// []interface{} := map(inputs, return &item) -> 何故か同じ要素を複数挿入になる
+	// というかgorpがbulk insert対応してなかった
 
-	// TODO: タイムゾーン確認
 	for _, item := range inputs {
 		err := dbm.Insert(&item)
 		if err != nil {
