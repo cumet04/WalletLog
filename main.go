@@ -1,14 +1,19 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"net/http"
+	"text/template"
 
 	"log"
 
 	"os"
+
+	"net/url"
 
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/mattn/go-sqlite3"
@@ -111,6 +116,49 @@ func bankHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+type LineOfLog struct {
+	RemoteAddr  string
+	ContentType string
+	Path        string
+	Query       string
+	Method      string
+	Body        string
+}
+
+func outputAccessLog(handler http.Handler) http.Handler {
+	// var TemplateOfLog = `"{{.RemoteAddr}}" "{{.Method}}" "{{.Path}}" "{{.Query}}" "{{.Body}}"`
+	var TemplateOfLog = "{{.Query}}"
+	tmpl, err := template.New("line").Parse(TemplateOfLog)
+	if err != nil {
+		panic(err)
+	}
+
+	// http://qiita.com/futoase/items/ea86b750bbb36d7d859a
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		bufbody := new(bytes.Buffer)
+		bufbody.ReadFrom(r.Body)
+		body := bufbody.String()
+
+		query, _ := url.QueryUnescape(r.URL.RawQuery)
+		line := LineOfLog{
+			r.RemoteAddr,
+			r.Header.Get("Content-Type"),
+			r.URL.Path,
+			query,
+			r.Method,
+			body,
+		}
+
+		bufline := new(bytes.Buffer)
+		if err := tmpl.Execute(bufline, line); err != nil {
+			panic(err)
+		}
+
+		log.Print(bufline.String())
+		handler.ServeHTTP(w, r)
+	})
+}
+
 func main() {
 	var migrate bool
 	flag.BoolVar(&migrate, "migrate", false, "initialize DB")
@@ -130,9 +178,16 @@ func main() {
 		os.Exit(0)
 	}
 
-	log.Println("start serving")
+	logfile, err := os.OpenFile("./access.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		panic("cannnot open test.log:" + err.Error())
+	}
+	defer logfile.Close()
+	log.SetOutput(io.MultiWriter(logfile, os.Stdout))
+
+	fmt.Println("start serving")
 	http.Handle("/", http.FileServer(http.Dir("static")))
 	http.HandleFunc("/api/purchase/", purchaseHandler)
 	http.HandleFunc("/api/bank_trade/", bankHandler)
-	http.ListenAndServe(":50000", nil)
+	http.ListenAndServe(":50000", outputAccessLog(http.DefaultServeMux))
 }
