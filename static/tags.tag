@@ -4,13 +4,13 @@
             <th>time</th>
             <th>price</th>
             <th>content</th>
-            <th>type</th>
+            <th>source</th>
         </tr>
         <tr each={ items }>
             <td>{ time }</td>
             <td align='right'>{ price }</td>
             <td>{ content }</td>
-            <td>{ type }</td>
+            <td>{ source }</td>
         </tr>
     </table>
 

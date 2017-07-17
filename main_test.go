@@ -31,7 +31,7 @@ func TestBankGetPost(t *testing.T) {
 	// insert
 	input := strings.NewReader(`[
 		{
-			"type": "mizuho-bank",
+			"source": "mizuho-bank",
 			"time": "2017-05-10T00:00:00+09:00",
 			"price": 211813,
 			"content": "振込 カ）オロ",
@@ -84,7 +84,7 @@ func TestPurchaseGetPost(t *testing.T) {
 	// insert
 	input := strings.NewReader(`[
 		{
-			"type": "jpbank-card",
+			"source": "jpbank-card",
 			"time": "2015-12-22T00:00:00+09:00",
 			"price": 2915,
 			"content": "神戸市水道局 コウベシスイドウキヨク　Ｅ５",
