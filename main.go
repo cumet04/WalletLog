@@ -72,7 +72,7 @@ func apiAddPurchase(w http.ResponseWriter, r *http.Request) {
 }
 
 func apiQueryPurchase(w http.ResponseWriter, r *http.Request) {
-	query := r.Form.Get("query")
+	query := r.FormValue("query")
 	res, err := account.QueryPurchase(query)
 	if err != nil {
 		w.WriteHeader(500)
